@@ -40,18 +40,55 @@ class UsernamePasswordInput {
 
 @Resolver()
 export class UserResolver {
-  @Mutation(() => User, { nullable: true })
+  @Mutation(() => UserResponse)
   async register(
     @Arg("options") options: UsernamePasswordInput,
     @Ctx() { em }: MyContext
-  ): Promise<User | null> {
-    const hashedPassword = await argon2.hash(options.password);
+  ): Promise<UserResponse> {
+    const { username, password } = options;
+
+    // basic validations
+    const errors = [];
+    if (options.username.length < 4)
+      errors.push({
+        field: "username",
+        message: "User name is too short",
+      });
+
+    if (options.password.length < 6)
+      errors.push({
+        field: "password",
+        message: "Password is too short",
+      });
+
+    const foundUser = await em.findOne(User, { username });
+    if (foundUser)
+      errors.push({
+        field: "username",
+        message: "Username already taken",
+      });
+
+    if (errors.length) return { errors };
+
+    // validations ok, create user
+    const hashedPassword = await argon2.hash(password);
     const user = em.create(User, {
-      username: options.username,
+      username,
       password: hashedPassword,
     });
-    await em.persistAndFlush(user);
-    return user;
+    try {
+      await em.persistAndFlush(user);
+      return { user };
+    } catch (err) {
+      return {
+        errors: [
+          {
+            field: "Unknown",
+            message: "Unknown error occured. Try again later",
+          },
+        ],
+      };
+    }
   }
 
   @Query(() => UserResponse)
