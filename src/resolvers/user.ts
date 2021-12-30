@@ -40,10 +40,18 @@ class UsernamePasswordInput {
 
 @Resolver()
 export class UserResolver {
+  @Query(() => User, { nullable: true })
+  async me(@Ctx() { req, em }: MyContext): Promise<User | null> {
+    if (!req.session.userId) {
+      return null;
+    }
+    return em.findOne(User, { id: req.session.userId });
+  }
+
   @Mutation(() => UserResponse)
   async register(
     @Arg("options") options: UsernamePasswordInput,
-    @Ctx() { em }: MyContext
+    @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
     const { username, password } = options;
 
@@ -78,6 +86,8 @@ export class UserResolver {
     });
     try {
       await em.persistAndFlush(user);
+      // save cookie to persist login
+      req.session.userId = user.id;
       return { user };
     } catch (err) {
       return {
@@ -91,10 +101,10 @@ export class UserResolver {
     }
   }
 
-  @Query(() => UserResponse)
+  @Mutation(() => UserResponse)
   async login(
     @Arg("options") options: UsernamePasswordInput,
-    @Ctx() { em }: MyContext
+    @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
     const { username } = options;
     const user = await em.findOne(User, { username });
@@ -106,6 +116,8 @@ export class UserResolver {
     }
 
     if (isValid && user) {
+      // save cookie to persist login
+      req.session.userId = user.id;
       return { user };
     } else {
       const error = new FieldError();
