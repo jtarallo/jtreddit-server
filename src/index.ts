@@ -21,7 +21,7 @@ const main = async () => {
 
   // cors
   const corsOptions = {
-    origin: "https://studio.apollographql.com",
+    origin: "http://localhost:3000",
     credentials: true,
     optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
   };
@@ -63,7 +63,10 @@ const main = async () => {
   });
 
   await apolloServer.start();
-  apolloServer.applyMiddleware({ app });
+  apolloServer.applyMiddleware({
+    app,
+    cors: { origin: "http://localhost:3000" },
+  });
 
   app.listen(4000, () => {
     console.log("Express running on port 4000;");
