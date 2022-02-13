@@ -1,6 +1,6 @@
 import cors from "cors";
 import { MikroORM } from "@mikro-orm/core";
-import { __prod__ } from "./constants";
+import { COOKIE_NAME, __prod__ } from "./constants";
 import mikroCfg from "./mikro-orm.config";
 import express from "express";
 import { ApolloServer } from "apollo-server-express";
@@ -39,7 +39,7 @@ const main = async () => {
 
   app.use(
     session({
-      name: "qid",
+      name: COOKIE_NAME,
       store,
       saveUninitialized: false,
       secret: "djsadusaodsadasdiodsa38hiudsaid",
