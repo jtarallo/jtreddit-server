@@ -20,17 +20,16 @@ export class UserResolver {
     @Arg("password") password: string,
     @Ctx() { em, redis, req }: MyContext
   ): Promise<UserResponse> {
-    const validationResult = await validateChangePassword(
-      password,
-      redis,
-      token
-    );
-    if (validationResult.errors.length) {
-      return { errors: validationResult.errors };
-    }
-    const userId = validationResult.userId || "0";
-    const user = await em.findOne(User, { id: parseInt(userId) });
+    const redisToken = `${FORGET_PASSWORD_PREFIX}${token}`;
+    const userId = (await redis.get(redisToken)) || "";
 
+    // validate
+    const errors = validateChangePassword(password, userId);
+    if (errors.length) {
+      return { errors };
+    }
+
+    const user = await em.findOne(User, { id: parseInt(userId) });
     if (!user) {
       return {
         errors: [
@@ -43,6 +42,9 @@ export class UserResolver {
     }
     user.password = await argon2.hash(password);
     await em.persistAndFlush(user);
+
+    // remove redis token for no reuses
+    redis.del(redisToken);
 
     // log in user after change password
     req.session.userId = user.id;
