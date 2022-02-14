@@ -4,13 +4,20 @@ import { Field, Int, ObjectType } from "type-graphql";
 @ObjectType()
 @Entity()
 export class User {
+  @Field(() => Date)
+  @Property()
+  createdAt: Date = new Date();
+
+  @Field()
+  @Property({ type: "text", unique: true })
+  email!: string;
+
   @Field(() => Int)
   @PrimaryKey()
   id!: number;
 
-  @Field(() => Date)
-  @Property()
-  createdAt: Date = new Date();
+  @Property({ type: "text" })
+  password!: string;
 
   @Field(() => Date)
   @Property({ onUpdate: () => new Date() })
@@ -19,7 +26,4 @@ export class User {
   @Field()
   @Property({ type: "text", unique: true })
   username!: string;
-
-  @Property({ type: "text" })
-  password!: string;
 }
