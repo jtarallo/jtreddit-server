@@ -8,7 +8,7 @@ import { UserInput } from "../types/UserInput";
 import { FieldError } from "../types/FieldError";
 import { UserResponse } from "../types/UserResponse";
 import { UserLoginInput } from "../types/UserLoginInput";
-import { sendEmail } from "src/utils/sendEmail";
+import { sendEmail } from "../utils/sendEmail";
 import { v4 } from "uuid";
 
 @Resolver()
