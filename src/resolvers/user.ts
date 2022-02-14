@@ -2,20 +2,42 @@ import argon2 from "argon2";
 import { User } from "../entities/User";
 import { Arg, Resolver, Mutation, Ctx, Query } from "type-graphql";
 import { MyContext } from "../types";
-import { COOKIE_NAME } from "../constants";
+import { COOKIE_NAME, FORGET_PASSWORD_PREFIX } from "../constants";
 import { validateRegistration } from "../utils/validateRegistration";
 import { UserInput } from "../types/UserInput";
 import { FieldError } from "../types/FieldError";
 import { UserResponse } from "../types/UserResponse";
 import { UserLoginInput } from "../types/UserLoginInput";
+import { sendEmail } from "src/utils/sendEmail";
+import { v4 } from "uuid";
 
 @Resolver()
 export class UserResolver {
-  // @Mutation(() => Boolean)
-  // async forgotPassword(@Arg("email") email: string, @Ctx() { em }: MyContext) {
-  //   // const user = await em.findOne(User, { email });
-  //   return true;
-  // }
+  @Mutation(() => Boolean)
+  async forgotPassword(
+    @Arg("email") email: string,
+    @Ctx() { em, redis }: MyContext
+  ) {
+    const user = await em.findOne(User, { email });
+    if (!user) {
+      return true;
+    }
+
+    const token = v4();
+    await redis.set(
+      `${FORGET_PASSWORD_PREFIX}${token}`,
+      user.id,
+      "ex",
+      1000 * 60 * 60 * 24 * 3
+    );
+
+    sendEmail(
+      email,
+      "Recover your password",
+      `<a href="http://localhost:3000/change-password/${token}">reset password</a>`
+    );
+    return true;
+  }
 
   @Mutation(() => UserResponse)
   async login(

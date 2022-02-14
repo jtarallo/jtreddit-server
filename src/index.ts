@@ -31,15 +31,13 @@ const main = async () => {
   const RedisStore = connectRedis(session);
   const redis = new Redis();
 
-  let store = new RedisStore({
-    client: redis,
-    disableTouch: true,
-  });
-
   app.use(
     session({
       name: COOKIE_NAME,
-      store,
+      store: new RedisStore({
+        client: redis,
+        disableTouch: true,
+      }),
       saveUninitialized: false,
       secret: "djsadusaodsadasdiodsa38hiudsaid",
       resave: false,
@@ -58,7 +56,7 @@ const main = async () => {
       resolvers: [PostResolver, UserResolver],
       validate: false,
     }),
-    context: ({ req, res }) => ({ em: orm.em, req, res }),
+    context: ({ req, res }) => ({ em: orm.em, req, res, redis }),
   });
 
   await apolloServer.start();
