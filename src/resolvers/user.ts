@@ -10,9 +10,46 @@ import { UserResponse } from "../types/UserResponse";
 import { UserLoginInput } from "../types/UserLoginInput";
 import { sendEmail } from "../utils/sendEmail";
 import { v4 } from "uuid";
+import { validateChangePassword } from "../utils/validateChangePassword";
 
 @Resolver()
 export class UserResolver {
+  @Mutation(() => UserResponse)
+  async changePassword(
+    @Arg("token") token: string,
+    @Arg("password") password: string,
+    @Ctx() { em, redis, req }: MyContext
+  ): Promise<UserResponse> {
+    const validationResult = await validateChangePassword(
+      password,
+      redis,
+      token
+    );
+    if (validationResult.errors.length) {
+      return { errors: validationResult.errors };
+    }
+    const userId = validationResult.userId || "0";
+    const user = await em.findOne(User, { id: parseInt(userId) });
+
+    if (!user) {
+      return {
+        errors: [
+          {
+            field: "token",
+            message: "User no longer exists",
+          },
+        ],
+      };
+    }
+    user.password = await argon2.hash(password);
+    await em.persistAndFlush(user);
+
+    // log in user after change password
+    req.session.userId = user.id;
+
+    return { user };
+  }
+
   @Mutation(() => Boolean)
   async forgotPassword(
     @Arg("email") email: string,
