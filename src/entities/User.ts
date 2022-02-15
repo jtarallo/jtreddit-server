@@ -4,9 +4,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Post } from "./Post";
 
 @ObjectType()
 @Entity()
@@ -25,6 +27,9 @@ export class User extends BaseEntity {
 
   @Column({ type: "text" })
   password!: string;
+
+  @OneToMany(() => Post, (post) => post.poster)
+  posts: Post[];
 
   @Field(() => Date)
   @UpdateDateColumn()

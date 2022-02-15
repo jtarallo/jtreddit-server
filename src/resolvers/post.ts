@@ -1,6 +1,25 @@
-import { Arg, Query, Resolver, Mutation } from "type-graphql";
+import {
+  Arg,
+  Query,
+  Resolver,
+  Mutation,
+  InputType,
+  Field,
+  Ctx,
+  UseMiddleware,
+} from "type-graphql";
 import { v4 } from "uuid";
 import { Post } from "../entities/Post";
+import { MyContext } from "../types";
+import { isAuth } from "../middleware/isAuth";
+
+@InputType()
+class PostInput {
+  @Field()
+  text: string;
+  @Field()
+  title: string;
+}
 
 @Resolver()
 export class PostResolver {
@@ -15,24 +34,37 @@ export class PostResolver {
   }
 
   @Mutation(() => Post)
-  createPost(@Arg("title") title: string): Promise<Post> {
-    return Post.create({ id: v4(), title }).save();
+  @UseMiddleware(isAuth)
+  createPost(
+    @Arg("input") input: PostInput,
+    @Ctx() { req }: MyContext
+  ): Promise<Post> {
+    return Post.create({
+      id: v4(),
+      ...input,
+      posterId: req.session.userId,
+    }).save();
   }
 
   @Mutation(() => Post, { nullable: true })
+  @UseMiddleware(isAuth)
   async updatePost(
     @Arg("id") id: number,
-    @Arg("title", () => String, { nullable: true }) title: string
+    @Arg("input") input: PostInput,
+    @Ctx() { req }: MyContext
   ): Promise<Post | null> {
     const post = await Post.findOne(id);
     if (!post) return null;
-    if (typeof title !== "undefined") {
-      await Post.update(id, { title });
+    if (post.posterId !== req.session.userId) {
+      throw new Error("Forbidden");
     }
+    Object.assign(post, input);
+    await Post.update(id, post);
     return post;
   }
 
   @Mutation(() => Post, { nullable: true })
+  @UseMiddleware(isAuth)
   async deletePost(@Arg("id") id: number): Promise<Post | null> {
     const post = await Post.findOne(id);
     if (!post) {
