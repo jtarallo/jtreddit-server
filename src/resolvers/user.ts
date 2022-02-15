@@ -29,7 +29,7 @@ export class UserResolver {
       return { errors };
     }
 
-    const user = await User.findOne(parseInt(userId));
+    const user = await User.findOne(userId);
     if (!user) {
       return {
         errors: [
