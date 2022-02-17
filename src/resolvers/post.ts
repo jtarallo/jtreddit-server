@@ -7,6 +7,7 @@ import {
   Field,
   Ctx,
   UseMiddleware,
+  Int,
 } from "type-graphql";
 import { v4 } from "uuid";
 import { Post } from "../entities/Post";
@@ -26,7 +27,7 @@ class PostInput {
 export class PostResolver {
   @Query(() => [Post])
   posts(
-    @Arg("limit") limit: number,
+    @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true }) cursor: string | null
   ): Promise<Post[]> {
     const qb = getConnection()
