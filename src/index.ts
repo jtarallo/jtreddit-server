@@ -12,18 +12,22 @@ import connectRedis from "connect-redis";
 import { createConnection } from "typeorm";
 import { Post } from "./entities/Post";
 import { User } from "./entities/User";
+import path from "path";
 
 const main = async () => {
   // sql
-  await createConnection({
-    type: "postgres",
+  const conn = await createConnection({
     database: "jtreddit",
-    username: "jtarallo",
-    password: "",
-    logging: true,
-    synchronize: true, // no migrations needed, use in dev
     entities: [Post, User],
+    migrations: [path.join(__dirname, "./migrations/*")],
+    logging: true,
+    password: "",
+    synchronize: false, // no migrations needed, use in dev
+    type: "postgres",
+    username: "jtarallo",
   });
+  await conn.runMigrations();
+
   // express
   const app = express();
 
