@@ -10,12 +10,21 @@ import {
   Int,
   FieldResolver,
   Root,
+  ObjectType,
 } from "type-graphql";
 import { v4 } from "uuid";
 import { Post } from "../entities/Post";
 import { MyContext } from "../types";
 import { isAuth } from "../middleware/isAuth";
 import { getConnection } from "typeorm";
+
+@ObjectType()
+class PaginatedPosts {
+  @Field(() => [Post])
+  posts: Post[];
+  @Field()
+  hasMore: boolean;
+}
 
 @InputType()
 class PostInput {
@@ -27,25 +36,37 @@ class PostInput {
 
 @Resolver(Post)
 export class PostResolver {
-  @FieldResolver(() => String)
-  textSnippet(@Root() root: Post) {
-    return root.text.length > 90 ? `${root.text.slice(0, 90)}...` : root.text;
+  @Mutation(() => Post, { nullable: true })
+  @UseMiddleware(isAuth)
+  async deletePost(@Arg("id") id: number): Promise<Post | null> {
+    const post = await Post.findOne(id);
+    if (!post) {
+      return null;
+    }
+    await Post.delete(id);
+    return post;
   }
 
-  @Query(() => [Post])
-  posts(
+  @Query(() => PaginatedPosts)
+  async posts(
     @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true }) cursor: string | null
-  ): Promise<Post[]> {
+  ): Promise<PaginatedPosts> {
+    const realLimit = Math.min(50, limit);
+    const realLimitPlusOne = realLimit + 1;
     const qb = getConnection()
       .getRepository(Post)
       .createQueryBuilder("p")
       .orderBy('"createdAt"', "DESC")
-      .take(Math.min(50, limit));
+      .take(realLimitPlusOne);
     if (cursor) {
       qb.where('"createdAt" < :cursor', { cursor: new Date(cursor) });
     }
-    return qb.getMany();
+    const posts = await qb.getMany();
+    return {
+      posts: posts.slice(0, realLimit),
+      hasMore: posts.length > realLimit,
+    };
   }
 
   @Query(() => Post, { nullable: true })
@@ -66,6 +87,11 @@ export class PostResolver {
     }).save();
   }
 
+  @FieldResolver(() => String)
+  textSnippet(@Root() root: Post) {
+    return root.text.length > 90 ? `${root.text.slice(0, 90)}...` : root.text;
+  }
+
   @Mutation(() => Post, { nullable: true })
   @UseMiddleware(isAuth)
   async updatePost(
@@ -80,17 +106,6 @@ export class PostResolver {
     }
     Object.assign(post, input);
     await Post.update(id, post);
-    return post;
-  }
-
-  @Mutation(() => Post, { nullable: true })
-  @UseMiddleware(isAuth)
-  async deletePost(@Arg("id") id: number): Promise<Post | null> {
-    const post = await Post.findOne(id);
-    if (!post) {
-      return null;
-    }
-    await Post.delete(id);
     return post;
   }
 }
