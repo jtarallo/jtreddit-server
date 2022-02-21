@@ -28,6 +28,8 @@ const main = async () => {
   });
   await conn.runMigrations();
 
+  // await Post.delete({});
+
   // express
   const app = express();
 
