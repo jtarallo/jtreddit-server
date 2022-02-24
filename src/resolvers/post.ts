@@ -17,7 +17,6 @@ import { Post } from "../entities/Post";
 import { MyContext } from "../types";
 import { isAuth } from "../middleware/isAuth";
 import { getConnection } from "typeorm";
-import { Upvote } from "../entities/Upvote";
 
 @ObjectType()
 class PaginatedPosts {
@@ -92,9 +91,11 @@ export class PostResolver {
     const { userId } = req.session;
     const addValue = value > 0 ? 1 : -1;
     try {
-      await Upvote.insert({ userId, postId, value: addValue });
       await getConnection().query(
-        `UPDATE post SET points = points + (${addValue}) WHERE id='${postId}'`
+        `START TRANSACTION; 
+        INSERT INTO upvote ("userId", "postId", value) VALUES ('${userId}', '${postId}', ${addValue});
+        UPDATE post SET points = points + (${addValue}) WHERE id='${postId}';
+        COMMIT;`
       );
     } catch (error) {
       throw new Error(error.message);
