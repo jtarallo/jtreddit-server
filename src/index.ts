@@ -13,16 +13,17 @@ import { createConnection } from "typeorm";
 import { Post } from "./entities/Post";
 import { User } from "./entities/User";
 import path from "path";
+import { Upvote } from "./entities/Upvote";
 
 const main = async () => {
   // sql
   const conn = await createConnection({
     database: "jtreddit",
-    entities: [Post, User],
+    entities: [Post, Upvote, User],
     migrations: [path.join(__dirname, "./migrations/*")],
     logging: true,
     password: "",
-    synchronize: false, // no migrations needed, use in dev
+    synchronize: true, // no migrations needed, use in dev
     type: "postgres",
     username: "jtarallo",
   });
