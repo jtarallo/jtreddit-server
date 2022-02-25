@@ -17,6 +17,7 @@ import { Post } from "../entities/Post";
 import { MyContext } from "../types";
 import { isAuth } from "../middleware/isAuth";
 import { getConnection } from "typeorm";
+import { Upvote } from "../entities/Upvote";
 
 @ObjectType()
 class PaginatedPosts {
@@ -90,13 +91,39 @@ export class PostResolver {
   ) {
     const { userId } = req.session;
     const addValue = value > 0 ? 1 : -1;
+    const vote = await Upvote.findOne({
+      where: { postId, userId },
+    });
     try {
-      await getConnection().query(
-        `START TRANSACTION; 
+      if (vote && vote.value !== addValue) {
+        await getConnection()
+          .query(
+            `START TRANSACTION; 
+            UPDATE upvote SET value=${addValue} WHERE "userId" = '${userId}' AND  "postId"='${postId}';
+            UPDATE post SET points = points + (${
+              addValue * 2
+            }) WHERE id='${postId}';
+           COMMIT;`
+          )
+          .catch(() => {
+            console.log("Failed transaction.");
+            return false;
+          });
+        return true;
+      } else if (vote && vote.value === addValue) {
+        return false;
+      }
+      await getConnection()
+        .query(
+          `START TRANSACTION; 
         INSERT INTO upvote ("userId", "postId", value) VALUES ('${userId}', '${postId}', ${addValue});
         UPDATE post SET points = points + (${addValue}) WHERE id='${postId}';
         COMMIT;`
-      );
+        )
+        .catch(() => {
+          console.log("Failed transaction.");
+          return false;
+        });
     } catch (error) {
       throw new Error(error.message);
     }
