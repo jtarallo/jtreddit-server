@@ -96,30 +96,43 @@ export class PostResolver {
     });
     try {
       if (vote && vote.value !== addValue) {
+        // user already voted,
+        // update vote & post's points
         await getConnection()
-          .query(
-            `START TRANSACTION; 
-            UPDATE upvote SET value=${addValue} WHERE "userId" = '${userId}' AND  "postId"='${postId}';
-            UPDATE post SET points = points + (${
-              addValue * 2
-            }) WHERE id='${postId}';
-           COMMIT;`
-          )
+          .transaction(async (transactionManager) => {
+            await transactionManager.query(`UPDATE upvote 
+              SET value=${addValue} 
+              WHERE "userId" = '${userId}' 
+              AND  "postId"='${postId}';`);
+
+            await transactionManager.query(
+              `UPDATE post SET points = points + (${
+                addValue * 2
+              }) WHERE id='${postId}';`
+            );
+          })
           .catch(() => {
             console.log("Failed transaction.");
             return false;
           });
         return true;
       } else if (vote && vote.value === addValue) {
+        // user voted with same value.
+        // do nothing
         return false;
       }
+      // user hasn't voted.
+      // add vote & add point to post
       await getConnection()
-        .query(
-          `START TRANSACTION; 
-        INSERT INTO upvote ("userId", "postId", value) VALUES ('${userId}', '${postId}', ${addValue});
-        UPDATE post SET points = points + (${addValue}) WHERE id='${postId}';
-        COMMIT;`
-        )
+        .transaction(async (transactionManager) => {
+          await transactionManager.query(
+            `INSERT INTO upvote ("userId", "postId", value) VALUES ('${userId}', '${postId}', ${addValue})`
+          );
+
+          await transactionManager.query(
+            `UPDATE post SET points = points + (${addValue}) WHERE id='${postId}';`
+          );
+        })
         .catch(() => {
           console.log("Failed transaction.");
           return false;
