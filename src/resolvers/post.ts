@@ -151,13 +151,19 @@ export class PostResolver {
   @Query(() => PaginatedPosts)
   async posts(
     @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
+    @Ctx() { req }: MyContext
   ): Promise<PaginatedPosts> {
     const realLimit = Math.min(50, limit);
     const realLimitPlusOne = realLimit + 1;
     const posts = await getConnection().query(
       `SELECT p.*, 
-      json_build_object('email',u.email, 'id', u.id, 'username', u.username) poster
+      json_build_object('email',u.email, 'id', u.id, 'username', u.username) poster,
+      ${
+        req.session.userId
+          ? `(SELECT value FROM upvote up WHERE up."postId"=p.id AND up."userId"='${req.session.userId}')`
+          : `NULL`
+      } as "voteStatus"
       FROM post p 
       INNER JOIN public.user u ON u.id = p."posterId" ${
         cursor ? `WHERE p."createdAt" < '${cursor}'` : ""
