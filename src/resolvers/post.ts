@@ -156,12 +156,14 @@ export class PostResolver {
   ): Promise<PaginatedPosts> {
     const realLimit = Math.min(50, limit);
     const realLimitPlusOne = realLimit + 1;
+    const { userId } = req.session;
+
     const posts = await getConnection().query(
       `SELECT p.*, 
       json_build_object('email',u.email, 'id', u.id, 'username', u.username) poster,
       ${
-        req.session.userId
-          ? `(SELECT value FROM upvote up WHERE up."postId"=p.id AND up."userId"='${req.session.userId}')`
+        userId
+          ? `(SELECT value FROM upvote up WHERE up."postId"=p.id AND up."userId"='${userId}')`
           : `NULL`
       } as "voteStatus"
       FROM post p 
