@@ -6,13 +6,13 @@ import { User } from "./User";
 @ObjectType()
 @Entity()
 export class Upvote extends BaseEntity {
-  @ManyToOne(() => User, (user) => user.upvotes)
+  @ManyToOne(() => User, (user) => user.upvotes, { onDelete: "CASCADE" })
   user: User;
 
   @PrimaryColumn()
   userId: string;
 
-  @ManyToOne(() => Post, (post) => post.upvotes)
+  @ManyToOne(() => Post, (post) => post.upvotes, { onDelete: "CASCADE" })
   post: Post;
 
   @PrimaryColumn()

@@ -44,9 +44,13 @@ export class PostResolver {
 
   @Mutation(() => Post, { nullable: true })
   @UseMiddleware(isAuth)
-  async deletePost(@Arg("id") id: number): Promise<Post | null> {
+  async deletePost(
+    @Arg("id") id: string,
+    @Ctx() { req }: MyContext
+  ): Promise<Post | null> {
+    const userId = req.session.userId;
     const post = await Post.findOne(id);
-    if (!post) {
+    if (!post || post.posterId !== userId) {
       return null;
     }
     await Post.delete(id);
