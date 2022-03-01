@@ -18,6 +18,7 @@ import { MyContext } from "../types";
 import { isAuth } from "../middleware/isAuth";
 import { getConnection } from "typeorm";
 import { Upvote } from "../entities/Upvote";
+import { User } from "../entities/User";
 
 @ObjectType()
 class PaginatedPosts {
@@ -37,6 +38,11 @@ class PostInput {
 
 @Resolver(Post)
 export class PostResolver {
+  @FieldResolver(() => User)
+  poster(@Root() post: Post, @Ctx() { userLoader }: MyContext) {
+    return userLoader.load(post.posterId);
+  }
+
   @FieldResolver(() => String)
   textSnippet(@Root() root: Post) {
     return root.text.length > 90 ? `${root.text.slice(0, 90)}...` : root.text;
@@ -86,7 +92,7 @@ export class PostResolver {
         posterId: req.session.userId,
       })
       .execute();
-    return await Post.findOne(id, { relations: ["poster"] });
+    return await Post.findOne(id);
   }
 
   @Mutation(() => Boolean)
@@ -118,7 +124,6 @@ export class PostResolver {
             );
           })
           .catch(() => {
-            console.log("Failed transaction.");
             return false;
           });
         return true;
@@ -151,7 +156,7 @@ export class PostResolver {
 
   @Query(() => Post, { nullable: true })
   async post(@Arg("id") id: string): Promise<Post | undefined> {
-    return await Post.findOne(id, { relations: ["poster"] });
+    return await Post.findOne(id);
   }
 
   @Query(() => PaginatedPosts)
@@ -166,16 +171,13 @@ export class PostResolver {
 
     const posts = await getConnection().query(
       `SELECT p.*, 
-      json_build_object('email',u.email, 'id', u.id, 'username', u.username) poster,
       ${
         userId
           ? `(SELECT value FROM upvote up WHERE up."postId"=p.id AND up."userId"='${userId}')`
           : `NULL`
       } as "voteStatus"
       FROM post p 
-      INNER JOIN public.user u ON u.id = p."posterId" ${
-        cursor ? `WHERE p."createdAt" < '${cursor}'` : ""
-      }
+      ${cursor ? `WHERE p."createdAt" < '${cursor}'` : ""}
       ORDER BY p."createdAt" DESC LIMIT ${realLimitPlusOne}`
     );
     return {

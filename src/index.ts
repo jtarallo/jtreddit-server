@@ -14,6 +14,7 @@ import { Post } from "./entities/Post";
 import { User } from "./entities/User";
 import path from "path";
 import { Upvote } from "./entities/Upvote";
+import { createUserLoader } from "./utils/createUserLoader";
 
 const main = async () => {
   // sql
@@ -72,7 +73,12 @@ const main = async () => {
       resolvers: [PostResolver, UserResolver],
       validate: false,
     }),
-    context: ({ req, res }) => ({ req, res, redis }),
+    context: ({ req, res }) => ({
+      req,
+      res,
+      redis,
+      userLoader: createUserLoader(),
+    }),
   });
 
   await apolloServer.start();
