@@ -48,6 +48,21 @@ export class PostResolver {
     return root.text.length > 90 ? `${root.text.slice(0, 90)}...` : root.text;
   }
 
+  @FieldResolver(() => Int)
+  async voteStatus(
+    @Root() post: Post,
+    @Ctx() { upvoteLoader, req }: MyContext
+  ) {
+    if (!req.session.userId) {
+      return null;
+    }
+    const upvote = await upvoteLoader.load({
+      postId: post.id,
+      userId: req.session.userId,
+    });
+    return upvote ? upvote.value : null;
+  }
+
   @Mutation(() => Post, { nullable: true })
   @UseMiddleware(isAuth)
   async deletePost(
@@ -162,23 +177,16 @@ export class PostResolver {
   @Query(() => PaginatedPosts)
   async posts(
     @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
-    @Ctx() { req }: MyContext
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null
   ): Promise<PaginatedPosts> {
     const realLimit = Math.min(50, limit);
     const realLimitPlusOne = realLimit + 1;
-    const { userId } = req.session;
 
     const posts = await getConnection().query(
-      `SELECT p.*, 
-      ${
-        userId
-          ? `(SELECT value FROM upvote up WHERE up."postId"=p.id AND up."userId"='${userId}')`
-          : `NULL`
-      } as "voteStatus"
-      FROM post p 
-      ${cursor ? `WHERE p."createdAt" < '${cursor}'` : ""}
-      ORDER BY p."createdAt" DESC LIMIT ${realLimitPlusOne}`
+      `SELECT p.*
+       FROM post p 
+       ${cursor ? `WHERE p."createdAt" < '${cursor}'` : ""}
+       ORDER BY p."createdAt" DESC LIMIT ${realLimitPlusOne}`
     );
     return {
       posts: posts.slice(0, realLimit),

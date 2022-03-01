@@ -15,6 +15,7 @@ import { User } from "./entities/User";
 import path from "path";
 import { Upvote } from "./entities/Upvote";
 import { createUserLoader } from "./utils/createUserLoader";
+import { createUpvoteLoader } from "./utils/createUpvoteLoader";
 
 const main = async () => {
   // sql
@@ -77,6 +78,7 @@ const main = async () => {
       req,
       res,
       redis,
+      upvoteLoader: createUpvoteLoader(),
       userLoader: createUserLoader(),
     }),
   });
