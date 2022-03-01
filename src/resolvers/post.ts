@@ -144,8 +144,8 @@ export class PostResolver {
   }
 
   @Query(() => Post, { nullable: true })
-  post(@Arg("id") id: number): Promise<Post | undefined> {
-    return Post.findOne(id);
+  async post(@Arg("id") id: string): Promise<Post | undefined> {
+    return await Post.findOne(id, { relations: ["poster"] });
   }
 
   @Query(() => PaginatedPosts)
