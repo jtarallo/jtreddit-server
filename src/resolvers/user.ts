@@ -89,7 +89,7 @@ export class UserResolver {
     sendEmail(
       email,
       "Recover your password",
-      `<a href="http://localhost:3000/change-password/${token}">reset password</a>`
+      `<a href="${process.env.CORS_ORIGIN}/change-password/${token}">reset password</a>`
     );
     return true;
   }

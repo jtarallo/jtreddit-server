@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import "dotenv-safe/config";
 import cors from "cors";
 import { COOKIE_NAME, __prod__ } from "./constants";
 import express from "express";
@@ -19,19 +20,14 @@ import { createUpvoteLoader } from "./utils/createUpvoteLoader";
 
 const main = async () => {
   // sql
-  const conn = await createConnection({
-    database: "jtreddit",
+  await createConnection({
     entities: [Post, Upvote, User],
     migrations: [path.join(__dirname, "./migrations/*")],
     logging: true,
-    password: "",
-    synchronize: true, // no migrations needed, use in dev
+    synchronize: !__prod__, // no migrations needed, use in dev
     type: "postgres",
-    username: "jtarallo",
+    url: process.env.DATABASE_URL,
   });
-  await conn.runMigrations();
-
-  // await Post.delete({});
 
   // express
   const app = express();
@@ -47,7 +43,9 @@ const main = async () => {
 
   // redis middleware
   const RedisStore = connectRedis(session);
-  const redis = new Redis();
+  const redis = new Redis(process.env.REDIS_URL);
+
+  app.set("proxy", __prod__ ? 1 : 0);
 
   app.use(
     session({
@@ -57,13 +55,14 @@ const main = async () => {
         disableTouch: true,
       }),
       saveUninitialized: false,
-      secret: "djsadusaodsadasdiodsa38hiudsaid",
+      secret: process.env.SESSION_SECRET!,
       resave: false,
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
         httpOnly: true,
         secure: __prod__, // cookie only works in https
         sameSite: "lax", // csrf
+        domain: __prod__ ? ".jtreddit.com" : undefined,
       },
     })
   );
@@ -86,11 +85,11 @@ const main = async () => {
   await apolloServer.start();
   apolloServer.applyMiddleware({
     app,
-    cors: { origin: "http://localhost:3000" },
+    cors: { origin: process.env.CORS_ORIGIN },
   });
 
-  app.listen(4000, () => {
-    console.log("Express running on port 4000;");
+  app.listen(parseInt(process.env.PORT!), () => {
+    console.log(`server running on port ${process.env.PORT}`);
   });
 };
 
