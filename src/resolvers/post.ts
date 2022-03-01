@@ -73,18 +73,20 @@ export class PostResolver {
   @Mutation(() => Post, { nullable: true })
   @UseMiddleware(isAuth)
   async updatePost(
-    @Arg("id") id: number,
+    @Arg("id") id: string,
     @Arg("input") input: PostInput,
     @Ctx() { req }: MyContext
-  ): Promise<Post | null> {
-    const post = await Post.findOne(id);
-    if (!post) return null;
-    if (post.posterId !== req.session.userId) {
-      throw new Error("Forbidden");
-    }
-    Object.assign(post, input);
-    await Post.update(id, post);
-    return post;
+  ): Promise<Post | undefined> {
+    await getConnection()
+      .createQueryBuilder()
+      .update(Post)
+      .set({ ...input })
+      .where('id = :id and "posterId" = :posterId', {
+        id,
+        posterId: req.session.userId,
+      })
+      .execute();
+    return await Post.findOne(id, { relations: ["poster"] });
   }
 
   @Mutation(() => Boolean)
